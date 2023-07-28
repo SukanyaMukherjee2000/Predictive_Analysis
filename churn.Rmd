@@ -1,0 +1,98 @@
+---
+title: "Attrition Risk"
+author: "Sukanya Mukherjee"
+date: "2023-07-27"
+output:
+  word_document: default
+  html_document: default
+---
+Load the dataset
+```{r}
+data=read.csv("C:/Users/Admin/Downloads/churn.csv")
+
+```
+Load the necessary library
+```{r}
+library(dplyr)
+
+```
+Observe the data
+```{r}
+head(data)
+dim(data)
+```
+The data has information on 10000 clients on 11 different variables.
+
+Removing unnecessary columns such as RowNumber,Surname,CustomerID.
+```{r}
+data=data%>%select(CreditScore:Exited)
+```
+Now we need to look for null values
+```{r}
+sapply(data,function(x) sum(is.na(x)))
+
+```
+The dataset contains no null values.
+
+Now we convert the categorical variables to factors
+```{r}
+data$IsActiveMember=as.factor(data$IsActiveMember)
+data$Exited=as.factor(data$Exited)
+data$HasCrCard=as.factor(data$HasCrCard)
+```
+Now to implement the model we need to split the data into training set and test set to test the accuracy of our model.
+```{r}
+set.seed(12345)
+sample=sample(1:nrow(data),0.8*nrow(data))
+train_set=data[sample,]
+test_set=data[-sample,]
+dim(train_set)
+dim(test_set)
+```
+Our training set contains 8000 values on clients and test set contains 2000 values on clients.
+
+We are using Logistic regression model as the output variable i.e. Excited has only two possible outcomes (usually coded as 0 and 1). It is particularly useful for binary response variables because it allows us to model the probability of an event occurring based on predictor variables.
+```{r}
+model=glm(Exited~.,data=train_set,family = binomial)
+summary(model)
+```
+Now we predict on the test set
+```{r}
+predicted_probs <- predict(model, newdata = test_set, type = "response")
+```
+Converting probabilities to binary predictions (0 or 1) based on a threshold (e.g., 0.5)
+```{r}
+predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
+
+```
+Now we evaluate model accuracy.
+```{r}
+accuracy <- mean(predicted_classes == test_set$Exited)
+cat("Model Accuracy:", accuracy, "\n")
+```
+Our model accuracy is 0.81,it means that the model correctly predicted the outcome for approximately 81% of the instances in the test dataset. An accuracy of 0.81 suggests that the model is performing reasonably well.
+
+Check for a new variable
+```{r}
+new_customer=data.frame(CreditScore=1000,Geography="France",Gender="Female",Age=43,Tenure=2,Balance=11375,NumOfProducts=2,HasCrCard=0,IsActiveMember=0,EstimatedSalary=101248)
+new_customer$HasCrCard=as.factor(new_customer$HasCrCard)
+new_customer$IsActiveMember=as.factor(new_customer$IsActiveMember)
+prediction_new <- predict(model, newdata = new_customer)
+if (prediction_new == 0) {
+  print("The passenger did not leave the bank.")
+} else {
+  print("The passenger did leave the bank.")
+}
+```
+Conclusion
+Some interesting findings in the dataset:
+
+1)Older customers are churning more than younger ones alluding to a difference in service preference in the age categories. The bank may need to review their target market or review the strategy for retention between the different age groups.
+
+2)Having a credit card is not a good predictor for churn status mainly due to the high credit card ownership in Germany, France and Spain.
+
+3)Credit Score may be perceived as an important factor, but its significance is minimal among the other factors given that the distribution of credit score is similar for churned and retained customers.
+
+4)Clients with the longest and shortest tenure are more likely to churn compared to those that are of average tenure.
+
+5)Surprisingly, the churning customers are also those who have a greater bank balance with the bank. This should be concerning to the bank as they are losing customers that provide higher capitals.
